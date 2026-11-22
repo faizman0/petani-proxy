@@ -54,3 +54,4 @@ config/settings.json
 output/grok_accounts.txt
 output/grok_accounts.json
 output/grok_accounts_*.txt
+output/
