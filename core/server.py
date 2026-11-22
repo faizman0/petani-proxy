@@ -2526,7 +2526,8 @@ def start_proxy_server(
     background: bool = False,
     enable_health_check: bool = True,
     health_check_interval: int = 90,
-    min_healthy_count: int = 5
+    min_healthy_count: int = 5,
+    country_filter: Optional[str] = None
 ) -> Tuple[BaseServerClass, ProxyPoolManager]:
     pool_mgr = ProxyPoolManager(initial_proxies)
 
@@ -2537,7 +2538,8 @@ def start_proxy_server(
                 pool_manager=pool_mgr,
                 check_interval_sec=health_check_interval,
                 min_healthy_count=min_healthy_count,
-                enable_auto_refill=True
+                enable_auto_refill=True,
+                country_filter=country_filter
             )
             checker.start()
             pool_mgr.health_checker = checker

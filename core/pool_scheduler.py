@@ -29,7 +29,8 @@ class PoolHealthChecker(threading.Thread):
         check_interval_sec: int = 90,
         min_healthy_count: int = 5,
         max_probe_timeout_sec: float = 3.0,
-        enable_auto_refill: bool = True
+        enable_auto_refill: bool = True,
+        country_filter: Optional[str] = None
     ):
         super().__init__(daemon=True)
         self.pool_manager = pool_manager
@@ -37,6 +38,7 @@ class PoolHealthChecker(threading.Thread):
         self.min_healthy_count = min_healthy_count
         self.max_probe_timeout_sec = max_probe_timeout_sec
         self.enable_auto_refill = enable_auto_refill
+        self.country_filter = country_filter
         self.is_running = True
         self.last_check_time = 0
         self.last_refill_time = 0
@@ -88,12 +90,14 @@ class PoolHealthChecker(threading.Thread):
         """Refills pool in background when healthy proxies fall below threshold."""
         try:
             from core.fast_validator import run_fast_harvester
-            print(f"[Auto-Refill] ⚠️ Pool tersisa {len(self.pool_manager.proxies)} (< {self.min_healthy_count}). Mengisi ulang secara otomatis...")
+            cc = self.country_filter or os.environ.get("PETANI_COUNTRY", "").strip().upper() or None
+            print(f"[Auto-Refill] ⚠️ Pool tersisa {len(self.pool_manager.proxies)} (< {self.min_healthy_count}). Mengisi ulang secara otomatis... (Negara: {cc or 'semua'})")
             new_proxies = run_fast_harvester(
                 max_latency_ms=500,
                 target_count=10,
                 max_workers=150,
-                sync_db=True
+                sync_db=True,
+                country_filter=cc
             )
             if new_proxies:
                 existing_keys = {p["proxy"] for p in self.pool_manager.get_all()}

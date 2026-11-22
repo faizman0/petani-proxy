@@ -80,7 +80,10 @@ async def fetch_feed(session: aiohttp.ClientSession, url: str, protocol: str) ->
         pass
     return []
 
-async def harvest_raw_candidates(protocols: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+async def harvest_raw_candidates(
+    protocols: Optional[List[str]] = None,
+    country_filter: Optional[str] = None
+) -> List[Dict[str, Any]]:
     target_protos = protocols or ["http", "socks5"]
     tasks = []
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -99,6 +102,11 @@ async def harvest_raw_candidates(protocols: Optional[List[str]] = None) -> List[
             if key not in seen:
                 seen.add(key)
                 deduped.append(item)
+
+    if country_filter:
+        cc = country_filter.upper()
+        deduped = [p for p in deduped if p.get("country_code", "").upper() == cc or (p.get("country") or "").upper() == cc]
+
     return deduped
 
 async def check_http_proxy(
@@ -249,11 +257,12 @@ async def run_fast_harvester_async(
     batch_size: int = 400,
     protocols: Optional[List[str]] = None,
     sync_db: bool = True,
-    output_file: Optional[str] = None
+    output_file: Optional[str] = None,
+    country_filter: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     t0 = time.time()
-    print("\n⚡ [FAST HARVESTER] Mengunduh feed proxy publik...")
-    candidates = await harvest_raw_candidates(protocols=protocols)
+    print(f"\n⚡ [FAST HARVESTER] Mengunduh feed proxy publik... (Negara: {country_filter or 'semua'})")
+    candidates = await harvest_raw_candidates(protocols=protocols, country_filter=country_filter)
     print(f"📦 Total kandidat terkumpul: {len(candidates):,} kandidat.")
 
     if not candidates:
@@ -285,6 +294,10 @@ async def run_fast_harvester_async(
                 break
 
     live_proxies.sort(key=lambda x: x["latency_ms"])
+    if country_filter:
+        cc = country_filter.upper()
+        live_proxies = [p for p in live_proxies if (p.get("country_code") or "").upper() == cc or (p.get("country") or "").upper() == cc]
+        print(f"🌍 Filter negara {cc}: tersisa {len(live_proxies)} proxy.")
     elapsed = round(time.time() - t0, 2)
     print(f"\n🎉 Panen selesai dalam {elapsed} detik! Ditemukan {len(live_proxies)} proxy ultra-fast.")
 
@@ -309,14 +322,16 @@ def run_fast_harvester(
     max_latency_ms: int = 350,
     target_count: int = 15,
     max_workers: int = 200,
-    sync_db: bool = True
+    sync_db: bool = True,
+    country_filter: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     return asyncio.run(
         run_fast_harvester_async(
             max_latency_ms=max_latency_ms,
             target_count=target_count,
             max_workers=max_workers,
-            sync_db=sync_db
+            sync_db=sync_db,
+            country_filter=country_filter
         )
     )
 
