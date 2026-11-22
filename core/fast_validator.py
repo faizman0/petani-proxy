@@ -102,11 +102,6 @@ async def harvest_raw_candidates(
             if key not in seen:
                 seen.add(key)
                 deduped.append(item)
-
-    if country_filter:
-        cc = country_filter.upper()
-        deduped = [p for p in deduped if p.get("country_code", "").upper() == cc or (p.get("country") or "").upper() == cc]
-
     return deduped
 
 async def check_http_proxy(
@@ -262,7 +257,7 @@ async def run_fast_harvester_async(
 ) -> List[Dict[str, Any]]:
     t0 = time.time()
     print(f"\n⚡ [FAST HARVESTER] Mengunduh feed proxy publik... (Negara: {country_filter or 'semua'})")
-    candidates = await harvest_raw_candidates(protocols=protocols, country_filter=country_filter)
+    candidates = await harvest_raw_candidates(protocols=protocols)
     print(f"📦 Total kandidat terkumpul: {len(candidates):,} kandidat.")
 
     if not candidates:
@@ -296,7 +291,22 @@ async def run_fast_harvester_async(
     live_proxies.sort(key=lambda x: x["latency_ms"])
     if country_filter:
         cc = country_filter.upper()
-        live_proxies = [p for p in live_proxies if (p.get("country_code") or "").upper() == cc or (p.get("country") or "").upper() == cc]
+        print(f"🌍 Filter negara {cc} (geo lookup per proxy hidup)...")
+        kept = []
+        for p in live_proxies:
+            try:
+                import urllib.request, json as _json
+                url = f"http://ip-api.com/json/{p['ip']}?fields=country,countryCode,status"
+                with urllib.request.urlopen(url, timeout=3) as q:
+                    cd = _json.loads(q.read().decode("utf-8")) if q.status == 200 else {}
+                if cd.get("status") == "success":
+                    p["country"] = cd.get("country", "Unknown")
+                    p["country_code"] = cd.get("countryCode", "??")
+                if (p.get("country_code") or "").upper() == cc or (p.get("country") or "").upper() == cc:
+                    kept.append(p)
+            except Exception:
+                pass
+        live_proxies = kept
         print(f"🌍 Filter negara {cc}: tersisa {len(live_proxies)} proxy.")
     elapsed = round(time.time() - t0, 2)
     print(f"\n🎉 Panen selesai dalam {elapsed} detik! Ditemukan {len(live_proxies)} proxy ultra-fast.")
