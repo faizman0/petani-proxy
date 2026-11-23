@@ -613,8 +613,12 @@ def test_live_masking(port: int = 8888):
         if ask in ("", "y", "yes"):
             print(f"\n{Fore.GREEN}🚀 Menyiapkan amunisi awal dan menyalakan Gateway {port}...{Style.RESET_ALL}")
             from core.fast_validator import run_fast_harvester
+            import os as _os
             db_target = find_9router_db()
-            initial = run_fast_harvester(max_latency_ms=1200, target_count=8, sync_db=bool(db_target))
+            _cc = (_os.environ.get("PETANI_COUNTRY") or "").strip().upper() or None
+            if _cc:
+                print(f"🌍 Gateway mode: 1 negara = {_cc}")
+            initial = run_fast_harvester(max_latency_ms=1200, target_count=8, sync_db=bool(db_target), country_filter=_cc)
             if initial:
                 start_proxy_server(initial, port=port, background=True, enable_health_check=True)
                 time.sleep(1.5)
@@ -1345,11 +1349,15 @@ print("IP Aktif Residential:", resp.json()["ip"])
             print(f"\n{Fore.GREEN}{Style.BRIGHT}{'🚜 MENJALANKAN MODE PETANI AFK 24/7 (RESILIENT GATEWAY + AUTO-HEALER)...' if CURRENT_LANG == 'ID' else '🚜 STARTING 24/7 AFK FARMER DAEMON (RESILIENT GATEWAY + AUTO-HEALER)...'}{Style.RESET_ALL}")
             from core.server import start_proxy_server
             from core.fast_validator import run_fast_harvester
+            import os as _os
             db_target = find_9router_db()
+            _cc = (_os.environ.get("PETANI_COUNTRY") or "").strip().upper() or None
+            if _cc:
+                print(f"  🌍 Gateway mode: 1 negara = {_cc}")
             print(f"  {Fore.LIGHTBLACK_EX}• Menyiapkan amunisi awal dari feed cepat...{Style.RESET_ALL}")
-            initial = run_fast_harvester(max_latency_ms=1200, target_count=10, sync_db=bool(db_target))
+            initial = run_fast_harvester(max_latency_ms=1200, target_count=10, sync_db=bool(db_target), country_filter=_cc)
             print(f"\n{Fore.GREEN}✓ Gateway aktif di http://127.0.0.1:8888 (Auto-prune & refill aktif non-stop). Tekan Ctrl+C untuk berhenti.{Style.RESET_ALL}\n")
-            start_proxy_server(initial, port=8888, background=False, enable_health_check=True, health_check_interval=90, min_healthy_count=5)
+            start_proxy_server(initial, port=8888, background=False, enable_health_check=True, health_check_interval=90, min_healthy_count=5, country_filter=_cc)
         elif choice.lower() in ("s", "saved"):
             view_saved_results()
         elif choice == "0" or choice.lower() == "q":
@@ -1494,10 +1502,14 @@ def main():
     if args.daemon_gateway:
         from core.server import start_proxy_server
         from core.fast_validator import run_fast_harvester
+        import os as _os
+        _cc = (_os.environ.get("PETANI_COUNTRY") or "").strip().upper() or None
         print(f"\n{Fore.GREEN}🛡️ Menyiapkan amunisi awal untuk 24/7 Resilient Gateway...{Style.RESET_ALL}")
-        initial = run_fast_harvester(max_latency_ms=args.max_latency, target_count=10, sync_db=bool(router_db))
+        if _cc:
+            print(f"🌍 Gateway mode: 1 negara = {_cc}")
+        initial = run_fast_harvester(max_latency_ms=args.max_latency, target_count=10, sync_db=bool(router_db), country_filter=_cc)
         print(f"\n{Fore.GREEN}✓ Meluncurkan Gateway di http://127.0.0.1:8888 dengan auto-healer...{Style.RESET_ALL}\n")
-        start_proxy_server(initial, port=8888, background=False, enable_health_check=True, health_check_interval=90, min_healthy_count=5)
+        start_proxy_server(initial, port=8888, background=False, enable_health_check=True, health_check_interval=90, min_healthy_count=5, country_filter=_cc)
         return
 
     if args.webshare is not None:
